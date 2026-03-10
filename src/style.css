@@ -971,9 +971,8 @@ body::before {
 .scheduler-layout {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
-  /* Fill available space */
-  gap: var(--space-md);
+  height: calc(100vh - 80px);
+  gap: var(--space-sm);
 }
 
 .scheduler-header {
@@ -1063,7 +1062,7 @@ body::before {
 
 /* Sidebar */
 .scheduler-sidebar {
-  width: 320px;
+  width: 260px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
@@ -1083,10 +1082,10 @@ body::before {
 .draggable-pool {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-md);
+  padding: var(--space-sm);
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
   background: rgba(0, 0, 0, 0.2);
   min-height: 100px;
 }
@@ -1125,10 +1124,11 @@ body::before {
 }
 
 .grid-corner {
-  width: 120px;
+  width: 100px;
   flex-shrink: 0;
-  padding: var(--space-sm);
+  padding: var(--space-xs);
   font-weight: 700;
+  font-size: 0.8rem;
   color: var(--accent-primary);
   border-right: 1px solid var(--border-subtle);
   display: flex;
@@ -1143,8 +1143,8 @@ body::before {
 
 .grid-col-header {
   flex: 1;
-  min-width: 200px;
-  padding: var(--space-sm);
+  min-width: 140px;
+  padding: var(--space-xs);
   font-weight: 600;
   text-align: center;
   border-right: 1px solid var(--border-light);
@@ -1161,14 +1161,15 @@ body::before {
 .grid-row {
   display: flex;
   border-bottom: 1px solid var(--border-subtle);
-  min-height: 100px;
+  min-height: 60px;
 }
 
 .grid-row-header {
-  width: 120px;
+  width: 100px;
   flex-shrink: 0;
-  padding: var(--space-sm);
+  padding: var(--space-xs);
   font-weight: 600;
+  font-size: 0.78rem;
   border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -1183,12 +1184,12 @@ body::before {
 
 .grid-cell {
   flex: 1;
-  min-width: 200px;
+  min-width: 140px;
   border-right: 1px solid var(--border-light);
-  padding: var(--space-xs);
+  padding: 3px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   background: rgba(255, 255, 255, 0.01);
   transition: background var(--transition-fast);
 }
@@ -1211,8 +1212,8 @@ body::before {
   background: var(--gradient-card);
   border: 1px solid var(--border-light);
   border-left: 3px solid var(--accent-primary);
-  border-radius: var(--radius-md);
-  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
   cursor: grab;
   user-select: none;
   transition: all var(--transition-base);
@@ -1221,7 +1222,7 @@ body::before {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
 
 .course-card:hover {
@@ -1250,12 +1251,12 @@ body::before {
 
 .course-name {
   font-weight: 700;
-  font-size: 0.85rem;
-  line-height: 1.3;
+  font-size: 0.75rem;
+  line-height: 1.2;
   color: var(--text-primary);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1264,7 +1265,7 @@ body::before {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
 }
 
 .meta-code {
@@ -1277,8 +1278,8 @@ body::before {
 .meta-students {
   display: flex;
   align-items: center;
-  padding: 2px 6px;
-  font-size: 0.65rem;
+  padding: 1px 4px;
+  font-size: 0.6rem;
 }
 
 .course-sheets {
@@ -1313,8 +1314,8 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   color: var(--text-muted);
   background: var(--bg-glass);
@@ -1356,19 +1357,19 @@ body::before {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  margin-top: 2px;
-  padding-top: 6px;
+  margin-top: 1px;
+  padding-top: 3px;
   border-top: 1px dashed rgba(255, 255, 255, 0.08);
 }
 
 .share-toggle-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.7rem;
+  gap: 4px;
+  font-size: 0.65rem;
   color: var(--text-muted);
   background: rgba(255, 255, 255, 0.03);
-  padding: 4px 8px;
+  padding: 2px 6px;
   border-radius: var(--radius-full);
   border: 1px solid rgba(255, 255, 255, 0.05);
   cursor: pointer;
@@ -1850,4 +1851,80 @@ body::before {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* ---------- Compact Density Mode ---------- */
+.compact-mode .scheduler-sidebar {
+  width: 220px;
+}
+
+.compact-mode .course-card {
+  padding: 3px 6px;
+  gap: 2px;
+}
+
+.compact-mode .course-name {
+  font-size: 0.68rem;
+}
+
+.compact-mode .course-meta {
+  font-size: 0.58rem;
+}
+
+.compact-mode .course-sheets {
+  display: none;
+}
+
+.compact-mode .card-bottom-bar {
+  display: none;
+}
+
+.compact-mode .grid-col-header {
+  min-width: 110px;
+}
+
+.compact-mode .grid-cell {
+  min-width: 110px;
+  padding: 2px;
+  gap: 1px;
+}
+
+.compact-mode .grid-row {
+  min-height: 40px;
+}
+
+.compact-mode .grid-row-header {
+  width: 80px;
+  font-size: 0.7rem;
+}
+
+.compact-mode .grid-corner {
+  width: 80px;
+  font-size: 0.7rem;
+}
+
+/* Density toggle button */
+.density-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all var(--transition-fast);
+}
+
+.density-toggle:hover {
+  background: var(--bg-glass-hover);
+  color: var(--text-primary);
+}
+
+.density-toggle.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-primary);
+  border-color: rgba(99, 102, 241, 0.3);
 }

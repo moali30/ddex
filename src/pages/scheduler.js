@@ -142,6 +142,10 @@ export function renderSchedulerPage(container, appState, onComplete) {
                 <button class="btn btn-outline" id="btn-toggle-sidebar" title="Toggle Sidebar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
                 </button>
+                <button class="density-toggle" id="btn-density-toggle" title="Toggle compact mode">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    Compact
+                </button>
                 <button class="btn btn-primary" id="btn-next-print">
                     Print Schedule →
                 </button>
@@ -173,9 +177,12 @@ export function renderSchedulerPage(container, appState, onComplete) {
 
             <!-- The Grid -->
             <div class="scheduler-grid-container">
-                <div class="scheduler-tip-bar">
+                <div class="scheduler-tip-bar" id="scheduler-tip-bar">
                     <div>💡 <strong>Tip:</strong> Drag courses into the grid. Red borders = conflicts. Long-press a card for deep dive.</div>
-                    <div id="global-conflict-counter" class="conflict-counter">0 Conflicts</div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div id="global-conflict-counter" class="conflict-counter">0 Conflicts</div>
+                        <button class="btn btn-outline" style="padding:2px 8px; font-size:0.7rem;" id="btn-dismiss-tip">✕</button>
+                    </div>
                 </div>
                 
                 <div class="scheduler-grid">
@@ -433,6 +440,19 @@ export function renderSchedulerPage(container, appState, onComplete) {
         if (e.target === e.currentTarget) {
             e.currentTarget.classList.add('hidden');
         }
+    });
+
+    // Density Toggle (Compact mode)
+    document.getElementById('btn-density-toggle').addEventListener('click', () => {
+        const layout = document.querySelector('.scheduler-layout');
+        layout.classList.toggle('compact-mode');
+        const btn = document.getElementById('btn-density-toggle');
+        btn.classList.toggle('active');
+    });
+
+    // Dismiss Tip Bar
+    document.getElementById('btn-dismiss-tip').addEventListener('click', () => {
+        document.getElementById('scheduler-tip-bar').style.display = 'none';
     });
 
     // Initial validation
