@@ -2,7 +2,6 @@
  * Print page — Step 7: Finalize and Export Schedule
  * Professional Print System Overhaul
  */
-import { getCourseConflictsOnDay } from '../core/conflict.js';
 
 let printConfig = {
     title: "جدول امتحانات الفصل الدراسي",
@@ -463,13 +462,15 @@ function getCourseConflictsOnDay(c1Code, allCoursesOnDay, matrices) {
                 if (shared && shared.length > 0) {
                     conflicts.push({ subCode: c2.subCode, name: m.courseNames[c2.subCode] || c2.subCode, count: shared.length });
                     seen.add(c2.subCode);
-                    break; // found conflict for this pair, skip other matrices
+                    break;
                 }
             }
         }
     }
     return conflicts;
 }
+
+
 
 function exportToPDF() {
     if (typeof html2pdf === 'undefined') {
