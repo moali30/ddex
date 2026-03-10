@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exam Schedule Builder | بناء جدول الامتحانات</title>
+  <meta name="description" content="Web application for building exam schedules from student registration data" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+
+<body>
+  <div id="app" class="dashboard-layout">
+    <!-- Sidebar Navigation -->
+    <aside id="main-nav" class="sidebar-nav">
+      <div class="nav-brand">
+        <div class="brand-icon">📋</div>
+        <span>Exam Schedule</span>
+      </div>
+      <div class="nav-steps" id="nav-steps">
+        <button class="nav-step active" data-step="upload">
+          <span class="step-icon">📤</span>
+          <span class="step-label">Upload Data</span>
+        </button>
+        <button class="nav-step" data-step="preview" disabled>
+          <span class="step-icon">👀</span>
+          <span class="step-label">Preview Data</span>
+        </button>
+        <button class="nav-step" data-step="regulations" disabled>
+          <span class="step-icon">📑</span>
+          <span class="step-label">Regulations</span>
+        </button>
+        <button class="nav-step" data-step="matrix" disabled>
+          <span class="step-icon">🔀</span>
+          <span class="step-label">Conflict Matrix</span>
+        </button>
+        <button class="nav-step" data-step="info" disabled>
+          <span class="step-icon">📊</span>
+          <span class="step-label">Dashboard</span>
+        </button>
+        <button class="nav-step" data-step="scheduler" disabled>
+          <span class="step-icon">🗓️</span>
+          <span class="step-label">Smart Scheduler</span>
+        </button>
+        <button class="nav-step" data-step="print" disabled>
+          <span class="step-icon">🖨️</span>
+          <span class="step-label">Print & Export</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      <header class="top-header">
+        <div class="header-left">
+          <h2 id="current-page-title">Exam Schedule Builder</h2>
+        </div>
+        <div class="header-right">
+          <!-- Placeholder for Milestone 3 User Info -->
+          <div class="user-profile-ph">
+            <span>Admin User</span>
+            <div class="avatar-ph">A</div>
+          </div>
+        </div>
+      </header>
+
+      <main id="page-container" class="page-container">
+        <!-- Pages will be rendered here -->
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
