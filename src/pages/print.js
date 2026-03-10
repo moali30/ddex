@@ -2,6 +2,7 @@
  * Print page — Step 7: Finalize and Export Schedule
  * Professional Print System Overhaul
  */
+import { getCourseConflictsOnDay } from '../core/conflict.js';
 
 let printConfig = {
     title: "جدول امتحانات الفصل الدراسي",
@@ -96,6 +97,9 @@ export function renderPrintPage(container, appState, onComplete) {
                         </label>
                         <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
                             <input type="radio" name="print-mode" value="combined" ${printConfig.mode === 'combined' ? 'checked' : ''}> Combined (All in one)
+                        </label>
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 4px; color: var(--accent-primary); font-weight: 600;">
+                            <input type="radio" name="print-mode" value="student-counts" ${printConfig.mode === 'student-counts' ? 'checked' : ''}> Student Counts Report
                         </label>
                     </div>
                 </div>
@@ -233,7 +237,6 @@ function updatePreview(appState) {
             wrapper.appendChild(pageDiv);
         });
     } else {
-        // Combined Mode: merge all grid data
         const mergedGrid = {};
         const schedDefs = appState.schedulesDefs || [];
         schedDefs.forEach(sched => {
@@ -250,12 +253,13 @@ function updatePreview(appState) {
         const pageDiv = document.createElement('div');
         pageDiv.className = 'print-preview-container';
         pageDiv.dir = 'rtl';
-        pageDiv.innerHTML = generatePageHTML(appState, mergedGrid, 'الجدول المجمع');
+        const st = printConfig.mode === 'student-counts' ? 'تقرير أعداد الطلاب والتوزيع' : 'الجدول المجمع';
+        pageDiv.innerHTML = generatePageHTML(appState, mergedGrid, st, printConfig.mode === 'student-counts');
         wrapper.appendChild(pageDiv);
     }
 }
 
-function generatePageHTML(appState, gridData, subtitle = '') {
+function generatePageHTML(appState, gridData, subtitle = '', isStudentCountMode = false) {
     const days = appState.scheduler.days;
     const levels = appState.levels || [];
     const periodsMap = appState.scheduler.periods || {};
@@ -282,11 +286,11 @@ function generatePageHTML(appState, gridData, subtitle = '') {
         <table class="print-table">
             <thead>
                 <tr>
-                    <th style="width: 120px;">اليوم / التاريخ</th>
+                    <th style="width: 140px; background: #e9ecef;">اليوم <br> 📅 والتاريخ</th>
                     ${levels.map((lvl, idx) => `
-                        <th>
-                            <div style="font-weight: bold; font-size: 1.1em;">${lvl.name}</div>
-                            <div style="font-size:0.85em; color:#333; margin-top:4px;">🕒 ${periodsMap[idx] || '09:00 - 12:00'}</div>
+                        <th style="padding: 12px 8px;">
+                            <div style="font-weight: bold; font-size: 1.15em; margin-bottom: 6px;">${lvl.name}</div>
+                            <div style="font-size: 0.9em; display: inline-block; background: #fff; border: 1px solid #ccc; padding: 3px 8px; border-radius: 12px; color: #444;">🕒 ${periodsMap[idx] || '09:00 - 12:00'}</div>
                         </th>
                     `).join('')}
                 </tr>
@@ -307,8 +311,8 @@ function generatePageHTML(appState, gridData, subtitle = '') {
 
         if (allCoursesOnDay.length === 0) continue; // Skip empty days in print
 
-        // Compute Date label with Arabic day name
-        let dayLabel = `اليوم ${d + 1}`;
+        // Compute Date label with clearer Arabized layout
+        let dayLabel = `<div style="font-size: 1.1em; margin-bottom: 4px; border-bottom: 1px solid #ddd; padding-bottom: 4px;">اليوم ${d + 1}</div>`;
         if (appState.scheduler.startDate) {
             const base = new Date(appState.scheduler.startDate);
             base.setDate(base.getDate() + d);
@@ -317,7 +321,8 @@ function generatePageHTML(appState, gridData, subtitle = '') {
             const arabicDayName = base.toLocaleDateString('ar-EG', { weekday: 'long' });
             const dateStr = base.toLocaleDateString('en-GB'); // DD/MM/YYYY
 
-            dayLabel += `<br><span style="font-size: 0.9em; font-weight: bold; color: #333;">${arabicDayName}</span><br><span style="font-size: 0.8em; font-weight: normal; color: #555;">${dateStr}</span>`;
+            dayLabel += `<div style="font-size: 1em; font-weight: bold; color: #222; margin-bottom: 2px;">${arabicDayName}</div>`;
+            dayLabel += `<div style="font-size: 0.85em; font-weight: normal; color: #555; background: #fff; border-radius: 4px; display: inline-block; padding: 2px 6px; border: 1px solid #eee;">${dateStr}</div>`;
         }
 
         // Pre-calculate spanning/continuation mapping for shared courses
@@ -358,43 +363,69 @@ function generatePageHTML(appState, gridData, subtitle = '') {
                  </td>`;
 
         for (let l = 0; l < levels.length; l++) {
-            const realCourses = gridData[d]?.[l] || [];
-            const continuations = printContinuations[l] || [];
-            // Merge them dynamically so continuations appear identical in the column
-            const combinedCourses = [...continuations, ...realCourses];
+            let htmlContent = '';
 
-            html += `<td style="vertical-align: top;">`;
+            if (isStudentCountMode) {
+                // Student Count Mode Render (JUST NUMBERS & PERIODS)
+                const currentPeriod = periodsMap[l] || 'Unknown';
+                const totalStudentsInLevel = periodTotals[currentPeriod] || 0;
 
-            if (combinedCourses.length > 0) {
-                html += combinedCourses.map(c => {
-                    // Check conflicts on this day
-                    let conflictHtml = '';
-                    // Only check conflicts against the real origin courses, ignore checking against continuations here to avoid duplicate badges
-                    const conflicts = getCourseConflictsOnDay(c.subCode, allCoursesOnDay, appState.matrices || []);
-                    if (conflicts.length > 0) {
-                        const totalAffected = conflicts.reduce((sum, cf) => sum + cf.count, 0);
-                        const tooltip = conflicts.map(cf => `${cf.name}: ${cf.count} طلاب`).join(' | ');
-                        conflictHtml = `<div style="color: #d32f2f; font-weight: bold; font-size: 0.75em; margin-top: 4px; padding: 2px; border: 1px solid #d32f2f; background: #fff5f5; border-radius: 3px;" title="${tooltip}">
-                            ⚠ تعارض (${totalAffected} طالب)
-                        </div>`;
-                    }
+                let cellTotal = 0;
+                const realCourses = gridData[d]?.[l] || [];
+                realCourses.forEach(c => { cellTotal += c.students || 0; });
 
-                    return `
-                    <div class="print-course" style="border: 1px solid #aaa; padding: 6px; margin-bottom: 6px; border-radius: 4px; background: #fafafa; position: relative;">
-                        <div style="font-weight: bold; font-size: 0.95em; line-height: 1.2;">${c.courseName}</div>
-                        <div style="font-size: 0.75em; color: #666; font-family: monospace; margin-top: 2px;">${c.subCode}</div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                            ${c.isPrintContinuation ? '' : `<span style="font-size: 0.8em; font-weight: bold; color: #2e7d32;">👥 ${c.students || 0}</span>`}
-                            ${c.isShared ? '<span style="font-size: 0.7em; background: #e3f2fd; color: #1565c0; padding: 2px 4px; border-radius: 3px;">مشترك</span>' : ''}
+                // Add continuations count if we want the actual bodies sitting there, but typically continuations shouldn't double count if they are just the SAME students as the course before
+                // Here cellTotal accurately reflects the distinct students assigned to start in this cell.
+
+                if (cellTotal > 0) {
+                    htmlContent = `
+                        <div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0;">
+                            <div style="font-size: 2.5rem; font-weight: 800; color: #2e7d32;">${cellTotal}</div>
+                            <div style="font-size: 0.9em; color: #666; font-weight: bold; margin-top: 5px;">طالب</div>
                         </div>
-                        ${conflictHtml}
-                    </div>
                     `;
-                }).join('');
+                } else {
+                    htmlContent = `<div style="color: #bbb; text-align: center; font-size: 0.8em; padding: 20px 0;">—</div>`;
+                }
+
             } else {
-                html += `<div style="color: #bbb; text-align: center; font-size: 0.8em;">—</div>`;
+                // Normal Schedule Render
+                const realCourses = gridData[d]?.[l] || [];
+                const continuations = printContinuations[l] || [];
+                // Merge them dynamically so continuations appear identical in the column
+                const combinedCourses = [...continuations, ...realCourses];
+
+                if (combinedCourses.length > 0) {
+                    htmlContent += combinedCourses.map(c => {
+                        // Check conflicts on this day
+                        let conflictHtml = '';
+                        // Only check conflicts against the real origin courses, ignore checking against continuations here to avoid duplicate badges
+                        const conflicts = getCourseConflictsOnDay(c.subCode, allCoursesOnDay, appState.matrices || []);
+                        if (conflicts.length > 0) {
+                            const totalAffected = conflicts.reduce((sum, cf) => sum + cf.count, 0);
+                            const tooltip = conflicts.map(cf => `${cf.name}: ${cf.count} طلاب`).join(' | ');
+                            conflictHtml = `<div style="color: #d32f2f; font-weight: bold; font-size: 0.75em; margin-top: 4px; padding: 2px; border: 1px solid #d32f2f; background: #fff5f5; border-radius: 3px;" title="${tooltip}">
+                                ⚠ تعارض (${totalAffected} طالب)
+                            </div>`;
+                        }
+
+                        return `
+                        <div class="print-course" style="border: 1px solid #aaa; padding: 6px; margin-bottom: 6px; border-radius: 4px; background: #fafafa; position: relative;">
+                            <div style="font-weight: bold; font-size: 0.95em; line-height: 1.2;">${c.courseName}</div>
+                            <div style="font-size: 0.75em; color: #666; font-family: monospace; margin-top: 2px;">${c.subCode}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                                ${c.isPrintContinuation ? '' : `<span style="font-size: 0.8em; font-weight: bold; color: #2e7d32;">👥 ${c.students || 0}</span>`}
+                                ${c.isShared ? '<span style="font-size: 0.7em; background: #e3f2fd; color: #1565c0; padding: 2px 4px; border-radius: 3px;">مشترك</span>' : ''}
+                            </div>
+                            ${conflictHtml}
+                        </div>
+                        `;
+                    }).join('');
+                } else {
+                    htmlContent = `<div style="color: #bbb; text-align: center; font-size: 0.8em;">—</div>`;
+                }
             }
-            html += `</td>`;
+            html += `<td style="vertical-align: top;">${htmlContent}</td>`;
         }
         html += `</tr>`;
     }

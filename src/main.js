@@ -10,6 +10,7 @@ import { renderLevelsPage } from './pages/levels.js';
 import { renderInfoPage } from './pages/info.js';
 import { renderSchedulerPage } from './pages/scheduler.js';
 import { renderPrintPage } from './pages/print.js';
+import { renderConflictSearchPage } from './pages/conflict_search.js';
 
 // Application state
 const appState = {
@@ -25,7 +26,7 @@ const appState = {
 };
 
 // Step order
-const STEPS = ['upload', 'preview', 'regulations', 'levels', 'matrix', 'info', 'scheduler', 'print'];
+const STEPS = ['upload', 'preview', 'regulations', 'levels', 'matrix', 'info', 'conflict_search', 'scheduler', 'print'];
 
 // Initialize the app
 function init() {
@@ -58,6 +59,7 @@ function navigateTo(step) {
         'levels': 'Study Levels',
         'matrix': 'Global Conflict Matrix',
         'info': 'Dashboard',
+        'conflict_search': 'بحث التعارضات',
         'scheduler': 'Smart Scheduler',
         'print': 'Print & Export'
     };
@@ -83,7 +85,10 @@ function navigateTo(step) {
             renderMatrixPage(container, appState, () => navigateTo('info'));
             break;
         case 'info':
-            renderInfoPage(container, appState, () => navigateTo('scheduler'));
+            renderInfoPage(container, appState, () => navigateTo('conflict_search'));
+            break;
+        case 'conflict_search':
+            renderConflictSearchPage(container, appState, () => navigateTo('scheduler'));
             break;
         case 'scheduler':
             renderSchedulerPage(container, appState, () => navigateTo('print'));
@@ -130,6 +135,7 @@ function canNavigateTo(step) {
         case 'levels': return appState.regulations !== null;
         case 'matrix': return appState.levels !== null;
         case 'info': return appState.matrices !== null;
+        case 'conflict_search': return appState.matrices !== null; // Needs conflicts to search
         case 'scheduler': return appState.matrices !== null; // Scheduler needs conflict matrix
         case 'print': return appState.scheduler && appState.scheduler.tabs;
         default: return false;
