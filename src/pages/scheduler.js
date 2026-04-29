@@ -11,10 +11,11 @@
  *  8. Clear All button in sidebar
  *  9. Toast for invalid drops
  */
-import { optimizeSchedule } from '../core/scheduler.js';
+import { optimizeSchedule, swapDays, optimizeStudentGaps, redistributeEvenly } from '../core/scheduler.js';
 
 // ─── Master course lookup: subCode → full course object (built once on init) ───
 let _courseLookup = {}; // key: `${subCode}::${regIndex}`
+let _periodsDefs = []; // cached period definitions for card rendering
 
 export function renderSchedulerPage(container, appState, onComplete) {
     // Initialize scheduler state if it doesn't exist
@@ -77,6 +78,7 @@ export function renderSchedulerPage(container, appState, onComplete) {
 
     // Build / refresh the master lookup map so updateSchedulerState can restore full metadata
     _courseLookup = {};
+    _periodsDefs = appState.periodsDefs || [{ name: '09:00 - 12:00' }];
     // Seed from original regulations
     appState.regulations.forEach((reg, regIndex) => {
         for (const subCode of reg.courses.keys()) {
@@ -135,6 +137,15 @@ export function renderSchedulerPage(container, appState, onComplete) {
                 </div>
                 <button class="btn btn-outline" id="btn-auto-schedule">
                     <span style="font-size: 1.2rem;">✨</span> Auto Optimize
+                </button>
+                <button class="btn btn-outline" id="btn-redistribute" style="border-color: var(--accent-amber); color: var(--accent-amber);">
+                    📊 توزيع متناسب
+                </button>
+                <button class="btn btn-outline" id="btn-optimize-gaps" style="border-color: var(--accent-green); color: var(--accent-green);">
+                    🎯 تحسين الفجوات
+                </button>
+                <button class="btn btn-outline" id="btn-friday-holidays" style="border-color: var(--accent-red); color: var(--accent-red);">
+                    🕌 إجازة الجمعة
                 </button>
                 <button class="btn btn-secondary" id="btn-clear-all">
                     ↩ Clear All
@@ -336,6 +347,30 @@ export function renderSchedulerPage(container, appState, onComplete) {
         }
     });
 
+    // Swap Day buttons (delegated on grid body)
+    document.getElementById('grid-body').addEventListener('click', (e) => {
+        const swapBtn = e.target.closest('.swap-day-btn');
+        if (!swapBtn || swapBtn.disabled) return;
+        const day = parseInt(swapBtn.dataset.day);
+        const dir = swapBtn.dataset.dir;
+        const targetDay = dir === 'up' ? day - 1 : day + 1;
+        if (targetDay < 0 || targetDay >= appState.scheduler.days) return;
+
+        swapDays(appState.scheduler.tabs, day, targetDay);
+
+        // Also swap holidays
+        const hA = appState.scheduler.holidays.includes(day);
+        const hB = appState.scheduler.holidays.includes(targetDay);
+        appState.scheduler.holidays = appState.scheduler.holidays.filter(d => d !== day && d !== targetDay);
+        if (hA) appState.scheduler.holidays.push(targetDay);
+        if (hB) appState.scheduler.holidays.push(day);
+
+        renderGrid(appState);
+        renderUnassigned(appState);
+        validateGrid(appState);
+        showToast(`🔀 تم تبديل يوم ${day + 1} مع يوم ${targetDay + 1}`);
+    });
+
     // Auto Optimize
     document.getElementById('btn-auto-schedule').addEventListener('click', () => {
         const btn = document.getElementById('btn-auto-schedule');
@@ -352,7 +387,8 @@ export function renderSchedulerPage(container, appState, onComplete) {
                 appState.levels,
                 appState.matrices,
                 appState.scheduler.days,
-                appState.scheduler.holidays
+                appState.scheduler.holidays,
+                appState.scheduler.periods
             );
 
             // Clear current tab grids
@@ -419,6 +455,75 @@ export function renderSchedulerPage(container, appState, onComplete) {
         renderGrid(appState);
         renderUnassigned(appState);
         validateGrid(appState);
+    });
+
+    // Redistribute Evenly
+    document.getElementById('btn-redistribute').addEventListener('click', () => {
+        const btn = document.getElementById('btn-redistribute');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<span class="loading-spinner" style="width:16px;height:16px;border-width:2px;"></span> جاري التوزيع...';
+        btn.disabled = true;
+        setTimeout(() => {
+            const result = redistributeEvenly(
+                appState.scheduler.tabs,
+                appState.matrices,
+                appState.scheduler.days,
+                appState.scheduler.holidays,
+                appState.levels
+            );
+            renderGrid(appState);
+            renderUnassigned(appState);
+            validateGrid(appState);
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+            showToast(`✅ تم نقل ${result.moved} مادة — التوزيع الآن أكثر تناسباً`);
+        }, 50);
+    });
+
+    // Optimize Student Gaps
+    document.getElementById('btn-optimize-gaps').addEventListener('click', () => {
+        const btn = document.getElementById('btn-optimize-gaps');
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = '<span class="loading-spinner" style="width:16px;height:16px;border-width:2px;"></span> جاري التحسين...';
+        btn.disabled = true;
+        setTimeout(() => {
+            const result = optimizeStudentGaps(
+                appState.scheduler.tabs,
+                appState.matrices,
+                appState.scheduler.days,
+                appState.scheduler.holidays
+            );
+            renderGrid(appState);
+            renderUnassigned(appState);
+            validateGrid(appState);
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+            const improvement = result.penaltyBefore - result.penaltyAfter;
+            showToast(`✅ تم تبديل ${result.swapsMade} يوم — تحسين ${improvement} حالة تتابع`);
+        }, 50);
+    });
+
+    // Friday Holidays Auto-Set
+    document.getElementById('btn-friday-holidays').addEventListener('click', () => {
+        if (!appState.scheduler.startDate) {
+            showToast('⚠️ يرجى تحديد تاريخ البداية أولاً');
+            return;
+        }
+        const base = new Date(appState.scheduler.startDate);
+        let fridayCount = 0;
+        for (let d = 0; d < appState.scheduler.days; d++) {
+            const dayDate = new Date(base);
+            dayDate.setDate(dayDate.getDate() + d);
+            if (dayDate.getDay() === 5) { // Friday
+                if (!appState.scheduler.holidays.includes(d)) {
+                    appState.scheduler.holidays.push(d);
+                    fridayCount++;
+                }
+            }
+        }
+        renderGrid(appState);
+        validateGrid(appState);
+        showToast(`🕌 تم تفعيل إجازة ${fridayCount} يوم جمعة`);
     });
 
     // Next
@@ -533,12 +638,24 @@ function renderGrid(appState) {
 
         // Compute the date label for this day
         let dayLabel = `Day ${d + 1}`;
+        let isFriday = false;
         if (appState.scheduler.startDate) {
             const base = new Date(appState.scheduler.startDate);
             base.setDate(base.getDate() + d);
             const formatted = base.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
-            dayLabel = `Day ${d + 1} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">${formatted}</span>`;
+            const dayName = base.toLocaleDateString('ar-EG', { weekday: 'short' });
+            isFriday = base.getDay() === 5;
+            dayLabel = `Day ${d + 1} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">${formatted}</span><br><span style="font-size:0.68rem; color:${isFriday ? 'var(--accent-red)' : 'var(--text-muted)'}; font-weight:${isFriday ? '700' : '400'};">${dayName}</span>`;
         }
+
+        const fridayBadge = (isFriday && !isHoliday)
+            ? `<div style="font-size:0.6rem; background:rgba(239,68,68,0.15); color:var(--accent-red); padding:1px 5px; border-radius:var(--radius-full); margin-top:2px; font-weight:700;">🕌 جمعة!</div>`
+            : '';
+
+        const swapBtns = `<div style="display:flex; gap:2px; margin-top:3px;">
+            <button class="swap-day-btn" data-day="${d}" data-dir="up" title="Swap with day above" style="padding:1px 4px; font-size:0.65rem; cursor:pointer; background:var(--bg-glass); border:1px solid var(--border-subtle); border-radius:3px; color:var(--text-secondary);" ${d === 0 ? 'disabled style="opacity:0.3;padding:1px 4px;font-size:0.65rem;cursor:not-allowed;background:var(--bg-glass);border:1px solid var(--border-subtle);border-radius:3px;color:var(--text-muted);"' : ''}>↑</button>
+            <button class="swap-day-btn" data-day="${d}" data-dir="down" title="Swap with day below" style="padding:1px 4px; font-size:0.65rem; cursor:pointer; background:var(--bg-glass); border:1px solid var(--border-subtle); border-radius:3px; color:var(--text-secondary);" ${d === days - 1 ? 'disabled style="opacity:0.3;padding:1px 4px;font-size:0.65rem;cursor:not-allowed;background:var(--bg-glass);border:1px solid var(--border-subtle);border-radius:3px;color:var(--text-muted);"' : ''}>↓</button>
+        </div>`;
 
         const levelsRow = document.createElement('div');
         levelsRow.className = `grid-row${isHoliday ? ' holiday-row' : ''}`;
@@ -546,6 +663,8 @@ function renderGrid(appState) {
         levelsRow.innerHTML = `<div class="grid-row-header">
             <span>${dayLabel}</span>
             ${conflictBadge}
+            ${fridayBadge}
+            ${swapBtns}
             <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 400; margin-top:4px;">
                 <label style="cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">
                     <input type="checkbox" class="holiday-toggle" data-day="${d}" ${isHoliday ? 'checked' : ''}> Holiday
@@ -672,7 +791,7 @@ function renderUnassigned(appState) {
     unassignedList.forEach(course => {
         const lookup = _courseLookup[`${course.subCode}::${course.regIndex}`];
         // Merge isShared from the actual course state (lookup defaults isShared to false)
-        const full = lookup ? { ...lookup, isShared: course.isShared } : course;
+        const full = lookup ? { ...lookup, isShared: course.isShared, lockedPeriod: course.lockedPeriod } : course;
         pool.appendChild(createCourseCard(full));
     });
 }
@@ -691,6 +810,7 @@ function createCourseCard(course) {
     el.dataset.regName = course.regName || '';
     el.dataset.breakdown = JSON.stringify(course.sheetBreakdown || {});
     el.dataset.shared = course.isShared ? 'true' : 'false';
+    el.dataset.lockedPeriod = course.lockedPeriod || '';
 
     if (course.isShared) {
         el.classList.add('is-shared');
@@ -746,6 +866,10 @@ function createCourseCard(course) {
                 <span class="share-toggle-indicator">${shareIconSVG}</span>
                 <span class="share-toggle-text">Shared</span>
             </div>
+            <select class="period-lock-select" data-code="${course.subCode}" data-reg="${course.regIndex}" title="تخصيص فترة" style="font-size:0.58rem; padding:1px 3px; background:var(--bg-glass); color:${course.lockedPeriod ? 'var(--accent-amber)' : 'var(--text-muted)'}; border:1px solid ${course.lockedPeriod ? 'var(--accent-amber)' : 'var(--border-subtle)'}; border-radius:3px; cursor:pointer; max-width:80px;">
+                <option value="" ${!course.lockedPeriod ? 'selected' : ''}>فترة</option>
+                ${_periodsDefs.map(p => `<option value="${p.name}" ${course.lockedPeriod === p.name ? 'selected' : ''}>${p.name}</option>`).join('')}
+            </select>
         </div>
     `;
     return el;
@@ -850,7 +974,8 @@ function updateSchedulerState(appState) {
         };
         tabState.unassigned.push({
             ...base,
-            isShared: card.dataset.shared === 'true'
+            isShared: card.dataset.shared === 'true',
+            lockedPeriod: card.dataset.lockedPeriod || ''
         });
     });
 
@@ -883,7 +1008,8 @@ function updateSchedulerState(appState) {
                 };
                 tabState.grid[d][l].push({
                     ...base,
-                    isShared: card.dataset.shared === 'true'
+                    isShared: card.dataset.shared === 'true',
+                    lockedPeriod: card.dataset.lockedPeriod || ''
                 });
             });
         });
@@ -1151,6 +1277,20 @@ function setupCardInteractions(appState) {
             const card = shareBtn.closest('.course-card');
             if (card && !card.classList.contains('shadow-placeholder')) {
                 toggleCardShared(card, appState);
+            }
+        }
+    });
+
+    // Period lock change (delegated)
+    layout.addEventListener('change', (e) => {
+        if (e.target.classList.contains('period-lock-select')) {
+            const card = e.target.closest('.course-card');
+            if (card) {
+                card.dataset.lockedPeriod = e.target.value;
+                updateSchedulerState(appState);
+                renderGrid(appState);
+                renderUnassigned(appState);
+                validateGrid(appState);
             }
         }
     });
